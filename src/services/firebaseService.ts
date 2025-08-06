@@ -146,7 +146,8 @@ export const getChallengesByDate = async (date: string): Promise<Challenge[]> =>
     return challenges;
   } catch (error) {
     console.error('Error getting challenges by date:', error);
-    throw error;
+    // Return empty array instead of throwing
+    return [];
   }
 };
 
@@ -206,7 +207,14 @@ export const getDailyStats = async (date: string): Promise<DailyStats> => {
     };
   } catch (error) {
     console.error('Error getting daily stats:', error);
-    throw error;
+    // Return empty stats instead of throwing
+    return {
+      date,
+      challenges: [],
+      totalProfit: 0,
+      totalChallenges: 0,
+      successfulChallenges: 0
+    };
   }
 };
 
