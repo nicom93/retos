@@ -295,7 +295,7 @@ const ChallengeTracker: React.FC = () => {
                     Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
                   </p>
                   <p className="text-sm text-blue-800">
-                    Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + calculatePotentialWin())}</span>
+                    Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + betAmount + calculatePotentialWin())}</span>
                   </p>
                 </div>
               )}
