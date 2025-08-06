@@ -91,13 +91,16 @@ export const addStepToChallenge = async (
     const updatedSteps = [...currentChallenge.steps, stepWithId];
     const totalProfit = updatedSteps.reduce((sum, s) => sum + s.bet.profit, 0);
     
-    // Determine final result
-    let finalResult: Challenge['finalResult'] = 'in_progress';
-    if (step.bet.result === 'loss') {
-      finalResult = 'failed';
-    } else if (step.bet.result === 'win' && step.stepNumber >= 3) {
-      finalResult = 'completed';
-    }
+         // Determine final result
+     let finalResult: Challenge['finalResult'] = 'in_progress';
+     
+     if (step.bet.result === 'loss' || step.totalAfter <= 0) {
+       // El desafío termina si pierde o se queda sin dinero
+       finalResult = 'failed';
+     } else if (step.bet.result === 'win' && step.stepNumber >= 3) {
+       // El desafío se completa si llega al paso 3 o más
+       finalResult = 'completed';
+     }
 
     await updateDoc(challengeRef, {
       steps: updatedSteps,

@@ -88,6 +88,11 @@ const ChallengeTracker: React.FC = () => {
       return;
     }
 
+    if (amount > currentTotal) {
+      setError('No puedes apostar más dinero del que tienes disponible');
+      return;
+    }
+
     if (betResult === 'pending') {
       setError('Por favor selecciona el resultado de la apuesta');
       return;
@@ -100,11 +105,18 @@ const ChallengeTracker: React.FC = () => {
       const totalBefore = currentTotal;
       
       // Calculate profit and new total
-      const profit = betResult === 'win' 
-        ? (amount * odds) - amount
-        : -amount;
+      let profit: number;
+      let totalAfter: number;
       
-      const totalAfter = totalBefore + profit;
+      if (betResult === 'win') {
+        // Si gana: recibe el monto apostado + ganancia neta
+        profit = (amount * odds) - amount;
+        totalAfter = totalBefore + profit;
+      } else {
+        // Si pierde: pierde el monto apostado
+        profit = -amount;
+        totalAfter = totalBefore - amount;
+      }
 
       const newStep: Omit<Step, 'id' | 'timestamp'> = {
         stepNumber,
@@ -122,12 +134,23 @@ const ChallengeTracker: React.FC = () => {
 
       await addStepToChallenge(currentChallenge.id, newStep);
       
+      // Determine final result
+      let finalResult: Challenge['finalResult'] = 'in_progress';
+      
+      if (betResult === 'loss' || totalAfter <= 0) {
+        // El desafío termina si pierde o se queda sin dinero
+        finalResult = 'failed';
+      } else if (stepNumber >= 3) {
+        // El desafío se completa si llega al paso 3 o más
+        finalResult = 'completed';
+      }
+      
       // Update local state
       const updatedChallenge: Challenge = {
         ...currentChallenge,
         steps: [...currentChallenge.steps, { ...newStep, id: `${Date.now()}`, timestamp: new Date() }],
         totalProfit: currentChallenge.totalProfit + profit,
-        finalResult: betResult === 'loss' ? 'failed' : (stepNumber >= 3 ? 'completed' : 'in_progress') as Challenge['finalResult']
+        finalResult
       };
 
       setCurrentChallenge(updatedChallenge);
@@ -164,6 +187,10 @@ const ChallengeTracker: React.FC = () => {
       return (amount * odds) - amount;
     }
     return 0;
+  };
+
+  const setBetAll = () => {
+    setBetAmount(currentTotal.toString());
   };
 
   if (loading) {
@@ -263,46 +290,59 @@ const ChallengeTracker: React.FC = () => {
             <div className="border-t pt-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Nuevo Paso</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monto a Apostar
-                  </label>
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="300"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cuota
-                  </label>
-                  <input
-                    type="number"
-                    value={betOdds}
-                    onChange={(e) => setBetOdds(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="1.5"
-                    min="1"
-                    step="0.01"
-                  />
-                </div>
-              </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     Monto a Apostar
+                   </label>
+                   <div className="flex space-x-2">
+                     <input
+                       type="number"
+                       value={betAmount}
+                       onChange={(e) => setBetAmount(e.target.value)}
+                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                       placeholder="300"
+                       min="0"
+                       max={currentTotal}
+                       step="0.01"
+                     />
+                     <button
+                       type="button"
+                       onClick={setBetAll}
+                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                     >
+                       Todo
+                     </button>
+                   </div>
+                   <p className="text-sm text-gray-600 mt-1">
+                     Disponible: {formatCurrency(currentTotal)}
+                   </p>
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     Cuota
+                   </label>
+                   <input
+                     type="number"
+                     value={betOdds}
+                     onChange={(e) => setBetOdds(e.target.value)}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                     placeholder="1.5"
+                     min="1"
+                     step="0.01"
+                   />
+                 </div>
+               </div>
 
               {betAmount && betOdds && parseFloat(betAmount) > 0 && parseFloat(betOdds) > 0 && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
                     Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
                   </p>
-                  <p className="text-sm text-blue-800">
-                                         Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + parseFloat(betAmount || '0') + calculatePotentialWin())}</span>
-                  </p>
+                                     <p className="text-sm text-blue-800">
+                     Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + calculatePotentialWin())}</span>
+                   </p>
                 </div>
               )}
 
