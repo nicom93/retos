@@ -9,8 +9,8 @@ const ChallengeTracker: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Form states
-  const [betAmount, setBetAmount] = useState<number>(0);
-  const [betOdds, setBetOdds] = useState<number>(0);
+  const [betAmount, setBetAmount] = useState<string>('');
+  const [betOdds, setBetOdds] = useState<string>('');
   const [betResult, setBetResult] = useState<'win' | 'loss' | 'pending'>('pending');
   const [currentTotal, setCurrentTotal] = useState<number>(0);
 
@@ -63,8 +63,8 @@ const ChallengeTracker: React.FC = () => {
       setCurrentChallenge(newChallenge);
       setChallenges([newChallenge, ...challenges]);
       setCurrentTotal(0);
-      setBetAmount(0);
-      setBetOdds(0);
+      setBetAmount('');
+      setBetOdds('');
       setBetResult('pending');
     } catch (err) {
       setError('Error al crear nuevo desafío');
@@ -80,7 +80,10 @@ const ChallengeTracker: React.FC = () => {
       return;
     }
 
-    if (betAmount <= 0 || betOdds <= 0) {
+    const amount = parseFloat(betAmount);
+    const odds = parseFloat(betOdds);
+
+    if (isNaN(amount) || amount <= 0 || isNaN(odds) || odds <= 0) {
       setError('Por favor ingresa un monto y cuota válidos');
       return;
     }
@@ -98,8 +101,8 @@ const ChallengeTracker: React.FC = () => {
       
       // Calculate profit and new total
       const profit = betResult === 'win' 
-        ? (betAmount * betOdds) - betAmount
-        : -betAmount;
+        ? (amount * odds) - amount
+        : -amount;
       
       const totalAfter = totalBefore + profit;
 
@@ -107,8 +110,8 @@ const ChallengeTracker: React.FC = () => {
         stepNumber,
         bet: {
           id: '',
-          amount: betAmount,
-          odds: betOdds,
+          amount,
+          odds,
           result: betResult,
           profit,
           timestamp: new Date()
@@ -131,8 +134,8 @@ const ChallengeTracker: React.FC = () => {
       setCurrentTotal(totalAfter);
       
       // Reset form
-      setBetAmount(0);
-      setBetOdds(0);
+      setBetAmount('');
+      setBetOdds('');
       setBetResult('pending');
       
       // Reload challenges to get updated data
@@ -154,8 +157,11 @@ const ChallengeTracker: React.FC = () => {
   };
 
   const calculatePotentialWin = () => {
-    if (betAmount > 0 && betOdds > 0) {
-      return (betAmount * betOdds) - betAmount;
+    const amount = parseFloat(betAmount);
+    const odds = parseFloat(betOdds);
+    
+    if (!isNaN(amount) && amount > 0 && !isNaN(odds) && odds > 0) {
+      return (amount * odds) - amount;
     }
     return 0;
   };
@@ -265,7 +271,7 @@ const ChallengeTracker: React.FC = () => {
                   <input
                     type="number"
                     value={betAmount}
-                    onChange={(e) => setBetAmount(Number(e.target.value))}
+                    onChange={(e) => setBetAmount(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="300"
                     min="0"
@@ -280,7 +286,7 @@ const ChallengeTracker: React.FC = () => {
                   <input
                     type="number"
                     value={betOdds}
-                    onChange={(e) => setBetOdds(Number(e.target.value))}
+                    onChange={(e) => setBetOdds(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="1.5"
                     min="1"
@@ -289,13 +295,13 @@ const ChallengeTracker: React.FC = () => {
                 </div>
               </div>
 
-              {betAmount > 0 && betOdds > 0 && (
+              {betAmount && betOdds && parseFloat(betAmount) > 0 && parseFloat(betOdds) > 0 && (
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
                     Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
                   </p>
                   <p className="text-sm text-blue-800">
-                    Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + betAmount + calculatePotentialWin())}</span>
+                                         Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + parseFloat(betAmount || '0') + calculatePotentialWin())}</span>
                   </p>
                 </div>
               )}
@@ -331,7 +337,7 @@ const ChallengeTracker: React.FC = () => {
               <div className="mt-6">
                 <button
                   onClick={addStep}
-                  disabled={betAmount <= 0 || betOdds <= 0 || betResult === 'pending'}
+                  disabled={!betAmount || !betOdds || parseFloat(betAmount) <= 0 || parseFloat(betOdds) <= 0 || betResult === 'pending'}
                   className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
                   Agregar Paso
