@@ -86,7 +86,7 @@ const History: React.FC = () => {
   const averageProfit = totalChallenges > 0 ? totalProfit / totalChallenges : 0;
 
   // Get unique dates for filter
-  const uniqueDates = [...new Set(challenges.map(c => c.date))].sort().reverse();
+  const uniqueDates = Array.from(new Set(challenges.map(c => c.date))).sort().reverse();
 
   if (loading) {
     return (

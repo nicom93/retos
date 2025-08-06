@@ -114,18 +114,17 @@ const ChallengeTracker: React.FC = () => {
           timestamp: new Date()
         },
         totalBefore,
-        totalAfter,
-        timestamp: new Date()
+        totalAfter
       };
 
       await addStepToChallenge(currentChallenge.id, newStep);
       
       // Update local state
-      const updatedChallenge = {
+      const updatedChallenge: Challenge = {
         ...currentChallenge,
         steps: [...currentChallenge.steps, { ...newStep, id: `${Date.now()}`, timestamp: new Date() }],
         totalProfit: currentChallenge.totalProfit + profit,
-        finalResult: betResult === 'loss' ? 'failed' : (stepNumber >= 3 ? 'completed' : 'in_progress')
+        finalResult: betResult === 'loss' ? 'failed' : (stepNumber >= 3 ? 'completed' : 'in_progress') as Challenge['finalResult']
       };
 
       setCurrentChallenge(updatedChallenge);
