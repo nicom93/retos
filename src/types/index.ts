@@ -32,6 +32,8 @@ export interface DailyStats {
   completedChallenges: number;
   failedChallenges: number;
   totalProfit: number;
+  totalMoneyInvested: number;
+  maxReached: number;
 }
 
 export interface BetFormData {

@@ -280,29 +280,37 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Daily Stats */}
-      {dailyStats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Desafíos Hoy</p>
-            <p className="text-2xl font-bold text-gray-900">{dailyStats.totalChallenges}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Completados</p>
-            <p className="text-2xl font-bold text-success-600">{dailyStats.completedChallenges}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Fallidos</p>
-            <p className="text-2xl font-bold text-danger-600">{dailyStats.failedChallenges}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Beneficio Total</p>
-            <p className={`text-2xl font-bold ${dailyStats.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-              {formatCurrency(dailyStats.totalProfit)}
-            </p>
-          </div>
-        </div>
-      )}
+             {/* Daily Stats */}
+       {dailyStats && (
+         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Cantidad de Retos</p>
+             <p className="text-2xl font-bold text-gray-900">{dailyStats.totalChallenges}</p>
+           </div>
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Dinero Invertido</p>
+             <p className="text-2xl font-bold text-blue-600">{formatCurrency(dailyStats.totalMoneyInvested)}</p>
+           </div>
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Máximo Alcanzado</p>
+             <p className="text-2xl font-bold text-purple-600">{formatCurrency(dailyStats.maxReached)}</p>
+           </div>
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Completados</p>
+             <p className="text-2xl font-bold text-success-600">{dailyStats.completedChallenges}</p>
+           </div>
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Fallidos</p>
+             <p className="text-2xl font-bold text-danger-600">{dailyStats.failedChallenges}</p>
+           </div>
+           <div className="bg-white rounded-lg shadow p-6">
+             <p className="text-sm text-gray-600">Beneficio Total</p>
+             <p className={`text-2xl font-bold ${dailyStats.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+               {formatCurrency(dailyStats.totalProfit)}
+             </p>
+           </div>
+         </div>
+       )}
 
       {/* Current Challenge Section */}
       <div className="bg-white rounded-lg shadow">

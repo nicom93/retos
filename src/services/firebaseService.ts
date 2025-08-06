@@ -213,12 +213,31 @@ export const getDailyStats = async (date: string): Promise<DailyStats> => {
     const completedChallenges = challenges.filter(c => c.finalResult === 'completed').length;
     const failedChallenges = challenges.filter(c => c.finalResult === 'failed').length;
     
+    // Calculate total money invested (sum of first bets from each challenge)
+    const totalMoneyInvested = challenges.reduce((sum, challenge) => {
+      if (challenge.steps.length > 0) {
+        return sum + challenge.steps[0].bet.amount;
+      }
+      return sum;
+    }, 0);
+    
+    // Calculate maximum reached (highest total from any single challenge)
+    const maxReached = challenges.reduce((max, challenge) => {
+      if (challenge.steps.length > 0) {
+        const challengeMax = Math.max(...challenge.steps.map(step => step.totalAfter));
+        return Math.max(max, challengeMax);
+      }
+      return max;
+    }, 0);
+    
     return {
       date,
       totalProfit,
       totalChallenges,
       completedChallenges,
-      failedChallenges
+      failedChallenges,
+      totalMoneyInvested,
+      maxReached
     };
   } catch (error) {
     console.error('Error getting daily stats:', error);
@@ -228,7 +247,9 @@ export const getDailyStats = async (date: string): Promise<DailyStats> => {
       totalProfit: 0,
       totalChallenges: 0,
       completedChallenges: 0,
-      failedChallenges: 0
+      failedChallenges: 0,
+      totalMoneyInvested: 0,
+      maxReached: 0
     };
   }
 };
