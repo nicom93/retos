@@ -39,4 +39,36 @@ export interface DailyStats {
 export interface BetFormData {
   amount: number;
   odds: number;
+}
+
+export interface BettingChallenge {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  initialInvestment: number;
+  totalSteps: number;
+  maxAmountReached: number;
+  finalResult: 'completo' | 'fallido' | 'abandonado' | 'en curso';
+  observations?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ChallengeStats {
+  totalChallenges: number;
+  averageSteps: number;
+  totalInvestment: number;
+  totalMaxGain: number;
+  averagePerformance: number;
+  completedChallenges: number;
+  failedChallenges: number;
+  abandonedChallenges: number;
+  inProgressChallenges: number;
+}
+
+export interface AnalyticsData {
+  bestPerformingChallenge: BettingChallenge | null;
+  challengesOver5Steps: number;
+  averagePerformance: number;
+  totalNetGain: number;
+  successRate: number;
 } 

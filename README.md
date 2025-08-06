@@ -1,193 +1,143 @@
-# Betting Tracker - Seguimiento de Desafíos de Apuestas
+# Tracker de Retos de Apuestas
 
-Una aplicación web para registrar y hacer seguimiento de desafíos de apuestas paso a paso, con cálculo automático de ganancias y estadísticas detalladas.
+Sistema simple y funcional para hacer seguimiento de retos de apuestas deportivas desde una cuenta de Telegram.
 
-## Características
+## 🎯 Características
 
-- 📊 **Dashboard en tiempo real** con estadísticas del día
-- 🎯 **Tracker de desafíos** para registrar apuestas paso a paso
-- 📈 **Cálculo automático** de ganancias basado en cuotas
-- 📅 **Historial completo** con filtros por fecha
-- 💰 **Seguimiento de totales** en cada paso del desafío
-- 🔥 **Base de datos Firebase** para persistencia de datos
-- 📱 **Interfaz responsive** optimizada para móviles
+### **Funcionalidades Principales:**
+- ✅ **Tabla resumen de retos** con todos los campos clave
+- ✅ **Cálculos automáticos** de rendimiento y ganancias
+- ✅ **Filtros por fecha y resultado**
+- ✅ **Panel de estadísticas** en tiempo real
+- ✅ **Análisis automático** con preguntas clave
+- ✅ **Almacenamiento local** (localStorage)
+- ✅ **Interfaz minimalista** y rápida
 
-## Tecnologías Utilizadas
+### **Campos del Sistema:**
+1. **Fecha del reto** - Campo obligatorio tipo date
+2. **Monto invertido en el Paso 1** - Número decimal/entero
+3. **Cantidad total de pasos alcanzados** - Número entero
+4. **Monto máximo alcanzado** - Valor máximo logrado en el reto
+5. **Resultado final** - Dropdown: completo, fallido, abandonado, en curso
+6. **Observaciones** - Texto libre opcional
 
-- **Frontend**: React 18 + TypeScript
-- **Styling**: Tailwind CSS
-- **Base de Datos**: Firebase Firestore
-- **Hosting**: Netlify
-- **Routing**: React Router DOM
+### **Cálculos Automáticos:**
+- **% de ganancia** = `(monto máximo / monto invertido) * 100`
+- **Rendimiento neto** = `monto máximo - monto invertido`
+- **Estadísticas generales** (totales, promedios, etc.)
 
-## Configuración Inicial
+## 🚀 Instalación y Uso
 
-### 1. Clonar el repositorio
-
+### **Instalación:**
 ```bash
-git clone <tu-repositorio>
+# Clonar el repositorio
+git clone <repository-url>
 cd betting-tracker
-```
 
-### 2. Instalar dependencias
-
-```bash
+# Instalar dependencias
 npm install
-```
 
-### 3. Configurar Firebase
-
-1. Ve a [Firebase Console](https://console.firebase.google.com/)
-2. Crea un nuevo proyecto
-3. Habilita Firestore Database
-4. Ve a Configuración del proyecto > Configuración de SDK
-5. Copia la configuración de la web app
-
-### 4. Actualizar configuración de Firebase
-
-Edita el archivo `src/firebase/config.ts` y reemplaza los valores con tu configuración:
-
-```typescript
-const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROJECT_ID.firebaseapp.com",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_PROJECT_ID.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
-};
-```
-
-### 5. Configurar reglas de Firestore
-
-En Firebase Console > Firestore Database > Reglas, usa estas reglas:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /challenges/{document} {
-      allow read, write: if true;
-    }
-  }
-}
-```
-
-## Desarrollo Local
-
-```bash
+# Ejecutar en desarrollo
 npm start
-```
 
-La aplicación estará disponible en `http://localhost:3000`
-
-## Construcción para Producción
-
-```bash
+# Construir para producción
 npm run build
 ```
 
-## Despliegue en Netlify
+### **Uso:**
+1. **Agregar Reto**: Haz clic en "Agregar Reto" y completa los campos obligatorios
+2. **Filtrar**: Usa los filtros de fecha y resultado para ver datos específicos
+3. **Editar**: Haz clic en "Editar" en cualquier fila para modificar datos
+4. **Eliminar**: Usa el botón "Eliminar" para quitar retos
+5. **Analizar**: Revisa la sección de análisis para insights automáticos
 
-### Opción 1: Despliegue Automático (Recomendado)
+## 📊 Panel de Estadísticas
 
-1. Conecta tu repositorio de GitHub a Netlify
-2. Configura las variables de entorno en Netlify:
-   - `REACT_APP_FIREBASE_API_KEY`
-   - `REACT_APP_FIREBASE_AUTH_DOMAIN`
-   - `REACT_APP_FIREBASE_PROJECT_ID`
-   - `REACT_APP_FIREBASE_STORAGE_BUCKET`
-   - `REACT_APP_FIREBASE_MESSAGING_SENDER_ID`
-   - `REACT_APP_FIREBASE_APP_ID`
+El sistema muestra automáticamente:
+- **Total de retos** cargados
+- **Promedio de pasos** por reto
+- **Inversión total** acumulada
+- **Ganancia máxima total** alcanzada
+- **Rendimiento promedio** en porcentaje
 
-### Opción 2: Despliegue Manual
+## 🔍 Filtros Disponibles
 
-1. Construye la aplicación:
-   ```bash
-   npm run build
-   ```
+- **Por fecha**: Selecciona una fecha específica
+- **Por resultado**: Filtra por completo, fallido, abandonado, en curso
+- **Combinados**: Los filtros funcionan en conjunto
 
-2. Sube la carpeta `build` a Netlify
+## 📈 Análisis Automático
 
-## Estructura del Proyecto
+El sistema responde automáticamente a estas preguntas:
+- ¿Cuál fue el reto con mayor ganancia máxima?
+- ¿Qué porcentaje de retos superó los 5 pasos?
+- ¿Cuál es el rendimiento promedio de todos los retos?
+- ¿Cuál fue la ganancia total neta?
+- ¿Cuál es la tasa de éxito?
 
-```
-src/
-├── components/          # Componentes React
-│   ├── Dashboard.tsx   # Dashboard principal
-│   ├── ChallengeTracker.tsx # Tracker de desafíos
-│   ├── History.tsx     # Historial de desafíos
-│   └── Navbar.tsx      # Navegación
-├── services/           # Servicios de Firebase
-│   └── firebaseService.ts
-├── types/              # Tipos TypeScript
-│   └── index.ts
-├── firebase/           # Configuración de Firebase
-│   └── config.ts
-└── App.tsx            # Componente principal
-```
+## 💾 Almacenamiento
 
-## Uso de la Aplicación
+- **LocalStorage**: Todos los datos se guardan en el navegador
+- **Sin backend**: No requiere servidor ni base de datos externa
+- **Persistencia**: Los datos se mantienen entre sesiones
+- **Exportación**: Los datos están disponibles en el localStorage del navegador
 
-### 1. Dashboard
-- Vista general de las estadísticas del día
-- Resumen de desafíos recientes
-- Acceso rápido a crear nuevos desafíos
+## 🎨 Tecnologías
 
-### 2. Tracker
-- Crear nuevos desafíos
-- Registrar apuestas paso a paso
-- Ver el progreso en tiempo real
-- Cálculo automático de ganancias
+- **React 18** con TypeScript
+- **Tailwind CSS** para estilos
+- **localStorage** para persistencia
+- **Cálculos automáticos** en tiempo real
 
-### 3. Historial
-- Ver todos los desafíos pasados
-- Filtrar por fecha
-- Estadísticas detalladas de cada desafío
+## 📱 Diseño
 
-## Funcionalidades Principales
+- **Desktop-first**: Optimizado para pantallas grandes
+- **Responsive**: Funciona en tablets y móviles
+- **Minimalista**: Interfaz limpia y rápida
+- **Intuitivo**: Fácil de usar sin instrucciones complejas
 
-### Registro de Desafíos
-- Cada desafío se registra con fecha automática
-- Seguimiento de múltiples pasos por desafío
-- Estado automático (en progreso, completado, fallido)
+## 🔧 Personalización
 
-### Cálculo de Ganancias
-- Cálculo automático basado en monto y cuota
-- Seguimiento del total acumulado
-- Visualización de ganancias potenciales
-
-### Estadísticas
-- Total de desafíos por día
-- Tasa de éxito
-- Beneficio total
-- Historial detallado
-
-## Variables de Entorno
-
-Crea un archivo `.env.local` en la raíz del proyecto:
-
-```env
-REACT_APP_FIREBASE_API_KEY=tu_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=tu_project.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=tu_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=tu_project.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=tu_sender_id
-REACT_APP_FIREBASE_APP_ID=tu_app_id
+### **Cambiar Moneda:**
+En `src/components/Dashboard.tsx`, línea de `formatCurrency`:
+```typescript
+currency: 'USD' // Cambiar a 'EUR', 'ARS', etc.
 ```
 
-## Contribución
+### **Agregar Campos:**
+1. Modificar `src/types/index.ts`
+2. Actualizar `src/services/storageService.ts`
+3. Agregar campos en el formulario de `src/components/Dashboard.tsx`
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+## 📝 Ejemplo de Uso
 
-## Licencia
+### **Escenario Típico:**
+1. **Reto del 15/01/2024**:
+   - Inversión inicial: $1,000
+   - Pasos alcanzados: 8
+   - Máximo alcanzado: $3,500
+   - Resultado: Completo
+   - Observaciones: "Excelente estrategia de escalado"
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+2. **Cálculos automáticos**:
+   - Rendimiento: +250%
+   - Ganancia neta: $2,500
+   - Contribuye a estadísticas generales
 
-## Soporte
+## 🚨 Notas Importantes
 
-Si tienes alguna pregunta o problema, por favor abre un issue en el repositorio.
+- **Datos locales**: Los datos se guardan solo en tu navegador
+- **Sin sincronización**: No hay backup automático
+- **Exportación manual**: Puedes exportar desde DevTools > Application > Local Storage
+- **Sin autenticación**: Sistema de uso personal
+
+## 🆘 Soporte
+
+Para problemas o mejoras:
+1. Revisar la consola del navegador para errores
+2. Verificar que localStorage esté habilitado
+3. Limpiar localStorage si hay datos corruptos
+
+---
+
+**Desarrollado para seguimiento personal de retos de apuestas deportivas.**

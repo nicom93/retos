@@ -1,626 +1,423 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { createChallenge, addStepToChallenge, getChallengesByDate, getDailyStats, finishChallenge } from '../services/firebaseService';
-import { Challenge, Step } from '../types';
+import React, { useState, useEffect } from 'react';
+import { BettingChallenge, ChallengeStats, AnalyticsData } from '../types';
+import { storageService } from '../services/storageService';
+import { calculationService } from '../services/calculationService';
 
 const Dashboard: React.FC = () => {
-  const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [dailyStats, setDailyStats] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showNewChallengeForm, setShowNewChallengeForm] = useState(false);
+  const [challenges, setChallenges] = useState<BettingChallenge[]>([]);
+  const [filteredChallenges, setFilteredChallenges] = useState<BettingChallenge[]>([]);
+  const [stats, setStats] = useState<ChallengeStats | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   
-  // Form states for current step
-  const [betAmount, setBetAmount] = useState<string>('');
-  const [betOdds, setBetOdds] = useState<string>('');
-  const [betResult, setBetResult] = useState<'win' | 'loss' | 'pending'>('pending');
-  const [currentTotal, setCurrentTotal] = useState<number>(0);
+  // Filters
+  const [dateFilter, setDateFilter] = useState('');
+  const [resultFilter, setResultFilter] = useState('todos');
+  
+  // New challenge form
+  const [newChallenge, setNewChallenge] = useState({
+    date: '',
+    initialInvestment: '',
+    totalSteps: '',
+    maxAmountReached: '',
+    finalResult: 'en curso' as const,
+    observations: ''
+  });
 
-  const today = new Date().toISOString().split('T')[0];
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [todayChallenges, stats] = await Promise.all([
-        getChallengesByDate(today),
-        getDailyStats(today)
-      ]);
-      
-      setChallenges(todayChallenges);
-      setDailyStats(stats);
-      
-             // Set current challenge to the most recent one that's in progress
-       const inProgressChallenge = todayChallenges.find(c => c.finalResult === 'in_progress');
-       if (inProgressChallenge) {
-         setCurrentChallenge(inProgressChallenge);
-         // Calculate current total based on the last step
-         if (inProgressChallenge.steps.length > 0) {
-           const lastStep = inProgressChallenge.steps[inProgressChallenge.steps.length - 1];
-           setCurrentTotal(lastStep.totalAfter);
-         } else {
-           setCurrentTotal(0);
-         }
-       } else {
-         setCurrentChallenge(null);
-         setCurrentTotal(0);
-       }
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [today]);
-
+  // Load data on component mount
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadChallenges();
+  }, []);
 
-  const startNewChallenge = async () => {
-    try {
-      setLoading(true);
-      const challengeId = await createChallenge(today);
-      const newChallenge: Challenge = {
-        id: challengeId,
-        date: today,
-        steps: [],
-        totalProfit: 0,
-        finalResult: 'in_progress',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      setCurrentChallenge(newChallenge);
-      setChallenges([newChallenge, ...challenges]);
-      setCurrentTotal(0);
-      setBetAmount('');
-      setBetOdds('');
-      setBetResult('pending');
-      setShowNewChallengeForm(false);
-    } catch (err) {
-      setError('Error al crear nuevo desafío');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // Update filtered challenges and stats when challenges change
+  useEffect(() => {
+    applyFilters();
+  }, [challenges, dateFilter, resultFilter]);
+
+  const loadChallenges = () => {
+    const loadedChallenges = storageService.getAllChallenges();
+    setChallenges(loadedChallenges);
   };
 
-  const addStep = async () => {
-    if (!currentChallenge) {
-      setError('No hay un desafío activo');
+  const applyFilters = () => {
+    let filtered = [...challenges];
+
+    // Apply date filter
+    if (dateFilter) {
+      filtered = calculationService.filterByDateRange(filtered, dateFilter, dateFilter);
+    }
+
+    // Apply result filter
+    if (resultFilter !== 'todos') {
+      filtered = calculationService.filterByResult(filtered, resultFilter);
+    }
+
+    setFilteredChallenges(filtered);
+    
+    // Calculate stats and analytics
+    const calculatedStats = calculationService.calculateStats(filtered);
+    const calculatedAnalytics = calculationService.calculateAnalytics(filtered);
+    
+    setStats(calculatedStats);
+    setAnalytics(calculatedAnalytics);
+  };
+
+  const handleAddChallenge = () => {
+    if (!newChallenge.date || !newChallenge.initialInvestment || !newChallenge.totalSteps || !newChallenge.maxAmountReached) {
+      alert('Por favor completa todos los campos obligatorios');
       return;
     }
 
-    const amount = parseFloat(betAmount);
-    const odds = parseFloat(betOdds);
+    const challenge = storageService.addChallenge({
+      date: newChallenge.date,
+      initialInvestment: parseFloat(newChallenge.initialInvestment),
+      totalSteps: parseInt(newChallenge.totalSteps),
+      maxAmountReached: parseFloat(newChallenge.maxAmountReached),
+      finalResult: newChallenge.finalResult,
+      observations: newChallenge.observations || undefined
+    });
 
-         if (isNaN(amount) || amount <= 0 || isNaN(odds) || odds <= 0) {
-       setError('Por favor ingresa un monto y cuota válidos');
-       return;
-     }
+    setChallenges(prev => [...prev, challenge]);
+    setShowAddForm(false);
+    resetNewChallengeForm();
+  };
 
-          if (betResult === 'pending') {
-       setError('Por favor selecciona el resultado de la apuesta');
-       return;
-     }
-
-     try {
-       setLoading(true);
-       
-       const stepNumber = currentChallenge.steps.length + 1;
-       
-       // Validar que no se apueste más del dinero disponible (excepto en el primer paso)
-       if (stepNumber > 1 && amount > currentTotal) {
-         setError('No puedes apostar más dinero del que tienes disponible');
-         return;
-       }
-      
-             // Calculate total before this step
-       let totalBefore: number;
-       if (stepNumber === 1) {
-         // Primer paso: empezamos con 0, pero el monto apostado es la inversión inicial
-         totalBefore = 0;
-       } else {
-         // Pasos siguientes: usamos el total del paso anterior
-         const lastStep = currentChallenge.steps[currentChallenge.steps.length - 1];
-         totalBefore = lastStep.totalAfter;
-       }
-       
-       // Calculate profit and new total
-       let profit: number;
-       let totalAfter: number;
-       
-       if (betResult === 'win') {
-         // Si gana: recibe el monto apostado + ganancia neta
-         profit = (amount * odds) - amount;
-         totalAfter = totalBefore + profit;
-       } else {
-         // Si pierde: pierde el monto apostado
-         profit = -amount;
-         totalAfter = totalBefore - amount;
-       }
-
-      const newStep: Omit<Step, 'id' | 'timestamp'> = {
-        stepNumber,
-        bet: {
-          id: '',
-          amount,
-          odds,
-          result: betResult,
-          profit,
-          timestamp: new Date()
-        },
-        totalBefore,
-        totalAfter
-      };
-
-      await addStepToChallenge(currentChallenge.id, newStep);
-      
-             // Determine final result
-       let finalResult: Challenge['finalResult'] = 'in_progress';
-       
-       if (betResult === 'loss' || totalAfter <= 0) {
-         // El desafío termina si pierde o se queda sin dinero
-         finalResult = 'failed';
-       }
-      
-      // Update local state
-      const updatedChallenge: Challenge = {
-        ...currentChallenge,
-        steps: [...currentChallenge.steps, { ...newStep, id: `${Date.now()}`, timestamp: new Date() }],
-        totalProfit: currentChallenge.totalProfit + profit,
-        finalResult
-      };
-
-      setCurrentChallenge(updatedChallenge);
-      setCurrentTotal(totalAfter);
-      
-      // Reset form
-      setBetAmount('');
-      setBetOdds('');
-      setBetResult('pending');
-      
-      // Reload data to get updated information
-      await loadData();
-      
-    } catch (err) {
-      setError('Error al agregar el paso');
-      console.error(err);
-    } finally {
-      setLoading(false);
+  const handleUpdateChallenge = (id: string, updates: Partial<BettingChallenge>) => {
+    const updated = storageService.updateChallenge(id, updates);
+    if (updated) {
+      setChallenges(prev => prev.map(c => c.id === id ? updated : c));
+      setEditingId(null);
     }
   };
 
-  const showNewChallengeFormHandler = () => {
-    setShowNewChallengeForm(true);
-    setError(null);
+  const handleDeleteChallenge = (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este reto?')) {
+      const success = storageService.deleteChallenge(id);
+      if (success) {
+        setChallenges(prev => prev.filter(c => c.id !== id));
+      }
+    }
   };
 
-  const finishChallengeHandler = async () => {
-    if (!currentChallenge) {
-      setError('No hay un desafío activo');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      await finishChallenge(currentChallenge.id);
-      
-      // Mark challenge as completed locally
-      const updatedChallenge: Challenge = {
-        ...currentChallenge,
-        finalResult: 'completed'
-      };
-
-      setCurrentChallenge(updatedChallenge);
-      setCurrentTotal(0);
-      setBetAmount('');
-      setBetOdds('');
-      setBetResult('pending');
-      
-      // Reload data
-      await loadData();
-      
-    } catch (err) {
-      setError('Error al finalizar el desafío');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const resetNewChallengeForm = () => {
+    setNewChallenge({
+      date: '',
+      initialInvestment: '',
+      totalSteps: '',
+      maxAmountReached: '',
+      finalResult: 'en curso',
+      observations: ''
+    });
   };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'USD'
     }).format(amount);
   };
 
-  const calculatePotentialWin = () => {
-    const amount = parseFloat(betAmount);
-    const odds = parseFloat(betOdds);
-    
-    if (!isNaN(amount) && amount > 0 && !isNaN(odds) && odds > 0) {
-      return (amount * odds) - amount;
+  const formatPercentage = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  };
+
+  const getResultColor = (result: string) => {
+    switch (result) {
+      case 'completo': return 'text-success-600 bg-success-100';
+      case 'fallido': return 'text-danger-600 bg-danger-100';
+      case 'abandonado': return 'text-yellow-600 bg-yellow-100';
+      case 'en curso': return 'text-blue-600 bg-blue-100';
+      default: return 'text-gray-600 bg-gray-100';
     }
-    return 0;
   };
-
-  const getMaxMoneyGenerated = (challenge: Challenge) => {
-    if (challenge.steps.length === 0) return 0;
-    
-    // Encontrar el paso con el total más alto (el récord)
-    const maxStep = challenge.steps.reduce((max, step) => 
-      step.totalAfter > max.totalAfter ? step : max
-    );
-    
-    return maxStep.totalAfter;
-  };
-
-  const getInitialMoney = (challenge: Challenge) => {
-    if (challenge.steps.length === 0) return 0;
-    // El dinero inicial es el monto del primer paso (la inversión inicial)
-    return challenge.steps[0].bet.amount;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Tracker de Desafíos</h1>
-        <div className="text-sm text-gray-600">
-          {new Date().toLocaleDateString('es-ES', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
-
-             {/* Daily Stats */}
-       {dailyStats && (
-         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Cantidad de Retos</p>
-             <p className="text-2xl font-bold text-gray-900">{dailyStats.totalChallenges}</p>
-           </div>
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Dinero Invertido</p>
-             <p className="text-2xl font-bold text-blue-600">{formatCurrency(dailyStats.totalMoneyInvested)}</p>
-           </div>
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Máximo Alcanzado</p>
-             <p className="text-2xl font-bold text-purple-600">{formatCurrency(dailyStats.maxReached)}</p>
-           </div>
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Completados</p>
-             <p className="text-2xl font-bold text-success-600">{dailyStats.completedChallenges}</p>
-           </div>
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Fallidos</p>
-             <p className="text-2xl font-bold text-danger-600">{dailyStats.failedChallenges}</p>
-           </div>
-           <div className="bg-white rounded-lg shadow p-6">
-             <p className="text-sm text-gray-600">Beneficio Total</p>
-             <p className={`text-2xl font-bold ${dailyStats.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-               {formatCurrency(dailyStats.totalProfit)}
-             </p>
-           </div>
-         </div>
-       )}
-
-      {/* Current Challenge Section */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {currentChallenge ? `Desafío Activo #${currentChallenge.id.slice(-6)}` : 'Nuevo Desafío'}
-            </h2>
-                         {!currentChallenge && !showNewChallengeForm && (
-               <button
-                 onClick={showNewChallengeFormHandler}
-                 className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-               >
-                 Iniciar Desafío
-               </button>
-             )}
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tracker de Retos de Apuestas</h1>
+          <p className="text-gray-600">Sistema de seguimiento y análisis de retos deportivos</p>
         </div>
 
-                          {(currentChallenge || showNewChallengeForm) && (
-           <div className="p-6">
-             {/* Current Challenge Status */}
-             {currentChallenge && (
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                 <div className="bg-gray-50 rounded-lg p-4">
-                   <p className="text-sm text-gray-600">Total Actual</p>
-                   <p className={`text-2xl font-bold ${currentTotal >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                     {formatCurrency(currentTotal)}
-                   </p>
-                 </div>
-                 
-                 <div className="bg-gray-50 rounded-lg p-4">
-                   <p className="text-sm text-gray-600">Pasos Completados</p>
-                   <p className="text-2xl font-bold text-gray-900">
-                     {currentChallenge.steps.length}
-                   </p>
-                 </div>
-                 
-                 <div className="bg-gray-50 rounded-lg p-4">
-                   <p className="text-sm text-gray-600">Beneficio Total</p>
-                   <p className={`text-2xl font-bold ${currentChallenge.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                     {formatCurrency(currentChallenge.totalProfit)}
-                   </p>
-                 </div>
-               </div>
-             )}
-
-                         {/* Steps History */}
-             {currentChallenge && currentChallenge.steps.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Historial de Pasos</h3>
-                <div className="space-y-3">
-                  {currentChallenge.steps.map((step) => (
-                    <div key={step.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                          step.bet.result === 'win' ? 'bg-success-600' : 'bg-danger-600'
-                        }`}>
-                          {step.stepNumber}
-                        </div>
-                                                 <div>
-                           <p className="font-medium text-gray-900">
-                             Paso {step.stepNumber} • {formatCurrency(step.bet.amount)} @ {step.bet.odds}
-                           </p>
-                           <p className="text-sm text-gray-600">
-                             {step.bet.result === 'win' ? 'Ganado' : 'Perdido'} • {formatCurrency(step.bet.profit)}
-                           </p>
-                           <p className="text-xs text-gray-500">
-                             Total antes: {formatCurrency(step.totalBefore)}
-                           </p>
-                         </div>
-                      </div>
-                                             <div className="text-right">
-                         <p className="text-sm text-gray-600">Total después:</p>
-                         <p className={`font-bold ${step.totalAfter >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                           {formatCurrency(step.totalAfter)}
-                         </p>
-                         {step.totalAfter < 0 && (
-                           <p className="text-xs text-red-600">Sin dinero</p>
-                         )}
-                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-                         {/* New Challenge Form */}
-             {showNewChallengeForm && !currentChallenge && (
-               <div className="border-t pt-6">
-                 <h3 className="text-lg font-medium text-gray-900 mb-4">Nuevo Desafío</h3>
-                 <p className="text-sm text-gray-600 mb-4">
-                   Haz clic en "Crear Desafío" para comenzar un nuevo desafío de apuestas.
-                 </p>
-                 <div className="flex space-x-4">
-                   <button
-                     onClick={startNewChallenge}
-                     className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                   >
-                     Crear Desafío
-                   </button>
-                   <button
-                     onClick={() => setShowNewChallengeForm(false)}
-                     className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                   >
-                     Cancelar
-                   </button>
-                 </div>
-               </div>
-             )}
-
-             {/* Add New Step Form */}
-             {currentChallenge && currentChallenge.finalResult === 'in_progress' && (
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Nuevo Paso</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                       Monto a Apostar
-                     </label>
-                     <input
-                       type="number"
-                       value={betAmount}
-                       onChange={(e) => setBetAmount(e.target.value)}
-                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                       placeholder="300"
-                       min="0"
-                       max={currentTotal > 0 ? currentTotal : undefined}
-                       step="0.01"
-                     />
-                     {currentTotal > 0 && (
-                       <p className="text-sm text-gray-600 mt-1">
-                         Disponible: {formatCurrency(currentTotal)}
-                       </p>
-                     )}
-                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cuota
-                    </label>
-                    <input
-                      type="number"
-                      value={betOdds}
-                      onChange={(e) => setBetOdds(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="1.5"
-                      min="1"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-
-                                 {betAmount && betOdds && parseFloat(betAmount) > 0 && parseFloat(betOdds) > 0 && (
-                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                     <p className="text-sm text-blue-800">
-                       Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
-                     </p>
-                     <p className="text-sm text-blue-800">
-                       Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + calculatePotentialWin())}</span>
-                     </p>
-                     <p className="text-sm text-blue-800">
-                       Total después de perder: <span className="font-bold">{formatCurrency(currentTotal - parseFloat(betAmount))}</span>
-                     </p>
-                   </div>
-                 )}
-
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Resultado
-                  </label>
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => setBetResult('win')}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        betResult === 'win'
-                          ? 'bg-success-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-success-100'
-                      }`}
-                    >
-                      Ganado
-                    </button>
-                    <button
-                      onClick={() => setBetResult('loss')}
-                      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                        betResult === 'loss'
-                          ? 'bg-danger-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-danger-100'
-                      }`}
-                    >
-                      Perdido
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex space-x-4">
-                  <button
-                    onClick={addStep}
-                    disabled={!betAmount || !betOdds || betResult === 'pending'}
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    Agregar Paso
-                  </button>
-                                     <button
-                     onClick={finishChallengeHandler}
-                     className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                   >
-                     Finalizar Reto
-                   </button>
-                </div>
-              </div>
-            )}
-
-                         {currentChallenge && currentChallenge.finalResult !== 'in_progress' && (
-               <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
-                 <p className="text-lg font-medium text-gray-900">
-                   Desafío {currentChallenge.finalResult === 'completed' ? 'Completado' : 'Fallido'}
-                 </p>
-                 <button
-                   onClick={startNewChallenge}
-                   className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                 >
-                   Iniciar Nuevo Desafío
-                 </button>
-               </div>
-             )}
+        {/* Stats Panel */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-600">Total Retos</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalChallenges}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-600">Promedio Pasos</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.averageSteps}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-600">Inversión Total</p>
+              <p className="text-2xl font-bold text-purple-600">{formatCurrency(stats.totalInvestment)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-600">Ganancia Máxima</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalMaxGain)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-600">Rendimiento Promedio</p>
+              <p className={`text-2xl font-bold ${stats.averagePerformance >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                {formatPercentage(stats.averagePerformance)}
+              </p>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* History Table */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Historial de Desafíos</h2>
+        {/* Filters and Actions */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por fecha</label>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por resultado</label>
+              <select
+                value={resultFilter}
+                onChange={(e) => setResultFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="todos">Todos</option>
+                <option value="completo">Completo</option>
+                <option value="fallido">Fallido</option>
+                <option value="abandonado">Abandonado</option>
+                <option value="en curso">En Curso</option>
+              </select>
+            </div>
+            <div className="ml-auto">
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Agregar Reto
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pasos
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Dinero Inicial
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Máximo Generado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Beneficio
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {challenges.map((challenge) => (
-                <tr key={challenge.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(challenge.date).toLocaleDateString('es-ES')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {challenge.steps.length}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(getInitialMoney(challenge))}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(getMaxMoneyGenerated(challenge))}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`font-medium ${challenge.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                      {formatCurrency(challenge.totalProfit)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      challenge.finalResult === 'completed' 
-                        ? 'bg-green-100 text-green-800' 
-                        : challenge.finalResult === 'failed'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {challenge.finalResult === 'completed' ? 'Completado' : 
-                       challenge.finalResult === 'failed' ? 'Fallido' : 'En progreso'}
-                    </span>
-                  </td>
+
+        {/* Add Challenge Form */}
+        {showAddForm && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Nuevo Reto</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+                <input
+                  type="date"
+                  value={newChallenge.date}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Inversión Inicial *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newChallenge.initialInvestment}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, initialInvestment: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="1000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Pasos *</label>
+                <input
+                  type="number"
+                  value={newChallenge.totalSteps}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, totalSteps: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="5"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Monto Máximo Alcanzado *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newChallenge.maxAmountReached}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, maxAmountReached: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="2500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Resultado Final</label>
+                <select
+                  value={newChallenge.finalResult}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, finalResult: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="en curso">En Curso</option>
+                  <option value="completo">Completo</option>
+                  <option value="fallido">Fallido</option>
+                  <option value="abandonado">Abandonado</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                <input
+                  type="text"
+                  value={newChallenge.observations}
+                  onChange={(e) => setNewChallenge(prev => ({ ...prev, observations: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Detalles adicionales..."
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleAddChallenge}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Guardar Reto
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  resetNewChallengeForm();
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Challenges Table */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Retos Registrados</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inversión</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasos</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Máximo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rendimiento</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ganancia Neta</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resultado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observaciones</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredChallenges.map((challenge) => (
+                  <tr key={challenge.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(challenge.date).toLocaleDateString('es-ES')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(challenge.initialInvestment)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {challenge.totalSteps}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(challenge.maxAmountReached)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`font-medium ${calculationService.calculatePerformance(challenge.maxAmountReached, challenge.initialInvestment) >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                        {formatPercentage(calculationService.calculatePerformance(challenge.maxAmountReached, challenge.initialInvestment))}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`font-medium ${calculationService.calculateNetGain(challenge.maxAmountReached, challenge.initialInvestment) >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                        {formatCurrency(calculationService.calculateNetGain(challenge.maxAmountReached, challenge.initialInvestment))}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getResultColor(challenge.finalResult)}`}>
+                        {challenge.finalResult}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {challenge.observations || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setEditingId(editingId === challenge.id ? null : challenge.id)}
+                        className="text-primary-600 hover:text-primary-900 mr-2"
+                      >
+                        {editingId === challenge.id ? 'Cancelar' : 'Editar'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteChallenge(challenge.id)}
+                        className="text-danger-600 hover:text-danger-900"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {/* Analytics Section */}
+        {analytics && (
+          <div className="mt-8 bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Análisis y Preguntas</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-medium text-blue-900 mb-2">¿Cuál fue el reto con mayor ganancia máxima?</h3>
+                  <p className="text-blue-800">
+                    {analytics.bestPerformingChallenge ? (
+                      <>
+                        Fecha: {new Date(analytics.bestPerformingChallenge.date).toLocaleDateString('es-ES')} - 
+                        Rendimiento: {formatPercentage(calculationService.calculatePerformance(analytics.bestPerformingChallenge.maxAmountReached, analytics.bestPerformingChallenge.initialInvestment))}
+                      </>
+                    ) : 'No hay datos disponibles'}
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h3 className="font-medium text-green-900 mb-2">¿Qué porcentaje de retos superó los 5 pasos?</h3>
+                  <p className="text-green-800">
+                    {filteredChallenges.length > 0 ? `${((analytics.challengesOver5Steps / filteredChallenges.length) * 100).toFixed(1)}%` : '0%'} 
+                    ({analytics.challengesOver5Steps} de {filteredChallenges.length})
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <h3 className="font-medium text-purple-900 mb-2">¿Cuál es el rendimiento promedio de todos los retos?</h3>
+                  <p className="text-purple-800">
+                    {formatPercentage(analytics.averagePerformance)}
+                  </p>
+                </div>
+                <div className="p-4 bg-orange-50 rounded-lg">
+                  <h3 className="font-medium text-orange-900 mb-2">¿Cuál fue la ganancia total neta?</h3>
+                  <p className={`text-orange-800 font-medium ${analytics.totalNetGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(analytics.totalNetGain)}
+                  </p>
+                </div>
+                <div className="p-4 bg-indigo-50 rounded-lg">
+                  <h3 className="font-medium text-indigo-900 mb-2">¿Cuál es la tasa de éxito?</h3>
+                  <p className="text-indigo-800">
+                    {analytics.successRate.toFixed(1)}% de retos completados exitosamente
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
