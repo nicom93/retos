@@ -92,45 +92,51 @@ const Dashboard: React.FC = () => {
     const amount = parseFloat(betAmount);
     const odds = parseFloat(betOdds);
 
-    if (isNaN(amount) || amount <= 0 || isNaN(odds) || odds <= 0) {
-      setError('Por favor ingresa un monto y cuota válidos');
-      return;
-    }
+         if (isNaN(amount) || amount <= 0 || isNaN(odds) || odds <= 0) {
+       setError('Por favor ingresa un monto y cuota válidos');
+       return;
+     }
 
-    if (betResult === 'pending') {
-      setError('Por favor selecciona el resultado de la apuesta');
-      return;
-    }
+          if (betResult === 'pending') {
+       setError('Por favor selecciona el resultado de la apuesta');
+       return;
+     }
 
-    try {
-      setLoading(true);
+     try {
+       setLoading(true);
+       
+       const stepNumber = currentChallenge.steps.length + 1;
+       
+       // Validar que no se apueste más del dinero disponible (excepto en el primer paso)
+       if (stepNumber > 1 && amount > currentTotal) {
+         setError('No puedes apostar más dinero del que tienes disponible');
+         return;
+       }
       
-      const stepNumber = currentChallenge.steps.length + 1;
-      
-      // Calculate total before this step
-      let totalBefore: number;
-      if (stepNumber === 1) {
-        // Primer paso: empezamos con 0
-        totalBefore = 0;
-      } else {
-        // Pasos siguientes: usamos el total del paso anterior
-        const lastStep = currentChallenge.steps[currentChallenge.steps.length - 1];
-        totalBefore = lastStep.totalAfter;
-      }
-      
-      // Calculate profit and new total
-      let profit: number;
-      let totalAfter: number;
-      
-      if (betResult === 'win') {
-        // Si gana: recibe el monto apostado + ganancia neta
-        profit = (amount * odds) - amount;
-        totalAfter = totalBefore + profit;
-      } else {
-        // Si pierde: pierde el monto apostado
-        profit = -amount;
-        totalAfter = totalBefore - amount;
-      }
+             // Calculate total before this step
+       let totalBefore: number;
+       if (stepNumber === 1) {
+         // Primer paso: empezamos con 0, pero el monto apostado es la inversión inicial
+         totalBefore = 0;
+       } else {
+         // Pasos siguientes: usamos el total del paso anterior
+         const lastStep = currentChallenge.steps[currentChallenge.steps.length - 1];
+         totalBefore = lastStep.totalAfter;
+       }
+       
+       // Calculate profit and new total
+       let profit: number;
+       let totalAfter: number;
+       
+       if (betResult === 'win') {
+         // Si gana: recibe el monto apostado + ganancia neta
+         profit = (amount * odds) - amount;
+         totalAfter = totalBefore + profit;
+       } else {
+         // Si pierde: pierde el monto apostado
+         profit = -amount;
+         totalAfter = totalBefore - amount;
+       }
 
       const newStep: Omit<Step, 'id' | 'timestamp'> = {
         stepNumber,
@@ -148,13 +154,13 @@ const Dashboard: React.FC = () => {
 
       await addStepToChallenge(currentChallenge.id, newStep);
       
-      // Determine final result
-      let finalResult: Challenge['finalResult'] = 'in_progress';
-      
-      if (betResult === 'loss') {
-        // El desafío termina si pierde
-        finalResult = 'failed';
-      }
+             // Determine final result
+       let finalResult: Challenge['finalResult'] = 'in_progress';
+       
+       if (betResult === 'loss' || totalAfter <= 0) {
+         // El desafío termina si pierde o se queda sin dinero
+         finalResult = 'failed';
+       }
       
       // Update local state
       const updatedChallenge: Challenge = {
@@ -369,14 +375,17 @@ const Dashboard: React.FC = () => {
                         }`}>
                           {step.stepNumber}
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            Paso {step.stepNumber} • {formatCurrency(step.bet.amount)} @ {step.bet.odds}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {step.bet.result === 'win' ? 'Ganado' : 'Perdido'} • {formatCurrency(step.bet.profit)}
-                          </p>
-                        </div>
+                                                 <div>
+                           <p className="font-medium text-gray-900">
+                             Paso {step.stepNumber} • {formatCurrency(step.bet.amount)} @ {step.bet.odds}
+                           </p>
+                           <p className="text-sm text-gray-600">
+                             {step.bet.result === 'win' ? 'Ganado' : 'Perdido'} • {formatCurrency(step.bet.profit)}
+                           </p>
+                           <p className="text-xs text-gray-500">
+                             Total antes: {formatCurrency(step.totalBefore)}
+                           </p>
+                         </div>
                       </div>
                                              <div className="text-right">
                          <p className="text-sm text-gray-600">Total después:</p>
@@ -399,20 +408,26 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Nuevo Paso</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Monto a Apostar
-                    </label>
-                    <input
-                      type="number"
-                      value={betAmount}
-                      onChange={(e) => setBetAmount(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="300"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
+                                     <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Monto a Apostar
+                     </label>
+                     <input
+                       type="number"
+                       value={betAmount}
+                       onChange={(e) => setBetAmount(e.target.value)}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                       placeholder="300"
+                       min="0"
+                       max={currentTotal > 0 ? currentTotal : undefined}
+                       step="0.01"
+                     />
+                     {currentTotal > 0 && (
+                       <p className="text-sm text-gray-600 mt-1">
+                         Disponible: {formatCurrency(currentTotal)}
+                       </p>
+                     )}
+                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
