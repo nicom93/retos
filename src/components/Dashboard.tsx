@@ -8,6 +8,7 @@ const Dashboard: React.FC = () => {
   const [dailyStats, setDailyStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showNewChallengeForm, setShowNewChallengeForm] = useState(false);
   
   // Form states for current step
   const [betAmount, setBetAmount] = useState<string>('');
@@ -75,6 +76,7 @@ const Dashboard: React.FC = () => {
       setBetAmount('');
       setBetOdds('');
       setBetResult('pending');
+      setShowNewChallengeForm(false);
     } catch (err) {
       setError('Error al crear nuevo desafío');
       console.error(err);
@@ -187,6 +189,11 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const showNewChallengeFormHandler = () => {
+    setShowNewChallengeForm(true);
+    setError(null);
   };
 
   const finishChallengeHandler = async () => {
@@ -325,45 +332,47 @@ const Dashboard: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {currentChallenge ? `Desafío Activo #${currentChallenge.id.slice(-6)}` : 'Nuevo Desafío'}
             </h2>
-            {!currentChallenge && (
-              <button
-                onClick={startNewChallenge}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-              >
-                Iniciar Desafío
-              </button>
-            )}
+                         {!currentChallenge && !showNewChallengeForm && (
+               <button
+                 onClick={showNewChallengeFormHandler}
+                 className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+               >
+                 Iniciar Desafío
+               </button>
+             )}
           </div>
         </div>
 
-        {currentChallenge && (
-          <div className="p-6">
-            {/* Current Challenge Status */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">Total Actual</p>
-                <p className={`text-2xl font-bold ${currentTotal >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                  {formatCurrency(currentTotal)}
-                </p>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">Pasos Completados</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {currentChallenge.steps.length}
-                </p>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">Beneficio Total</p>
-                <p className={`text-2xl font-bold ${currentChallenge.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                  {formatCurrency(currentChallenge.totalProfit)}
-                </p>
-              </div>
-            </div>
+                          {(currentChallenge || showNewChallengeForm) && (
+           <div className="p-6">
+             {/* Current Challenge Status */}
+             {currentChallenge && (
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <p className="text-sm text-gray-600">Total Actual</p>
+                   <p className={`text-2xl font-bold ${currentTotal >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                     {formatCurrency(currentTotal)}
+                   </p>
+                 </div>
+                 
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <p className="text-sm text-gray-600">Pasos Completados</p>
+                   <p className="text-2xl font-bold text-gray-900">
+                     {currentChallenge.steps.length}
+                   </p>
+                 </div>
+                 
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <p className="text-sm text-gray-600">Beneficio Total</p>
+                   <p className={`text-2xl font-bold ${currentChallenge.totalProfit >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                     {formatCurrency(currentChallenge.totalProfit)}
+                   </p>
+                 </div>
+               </div>
+             )}
 
-            {/* Steps History */}
-            {currentChallenge.steps.length > 0 && (
+                         {/* Steps History */}
+             {currentChallenge && currentChallenge.steps.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Historial de Pasos</h3>
                 <div className="space-y-3">
@@ -402,8 +411,32 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Add New Step Form */}
-            {currentChallenge.finalResult === 'in_progress' && (
+                         {/* New Challenge Form */}
+             {showNewChallengeForm && !currentChallenge && (
+               <div className="border-t pt-6">
+                 <h3 className="text-lg font-medium text-gray-900 mb-4">Nuevo Desafío</h3>
+                 <p className="text-sm text-gray-600 mb-4">
+                   Haz clic en "Crear Desafío" para comenzar un nuevo desafío de apuestas.
+                 </p>
+                 <div className="flex space-x-4">
+                   <button
+                     onClick={startNewChallenge}
+                     className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                   >
+                     Crear Desafío
+                   </button>
+                   <button
+                     onClick={() => setShowNewChallengeForm(false)}
+                     className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                   >
+                     Cancelar
+                   </button>
+                 </div>
+               </div>
+             )}
+
+             {/* Add New Step Form */}
+             {currentChallenge && currentChallenge.finalResult === 'in_progress' && (
               <div className="border-t pt-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Nuevo Paso</h3>
                 
@@ -490,7 +523,7 @@ const Dashboard: React.FC = () => {
                 <div className="mt-6 flex space-x-4">
                   <button
                     onClick={addStep}
-                    disabled={!betAmount || !betOdds || parseFloat(betAmount) <= 0 || parseFloat(betOdds) <= 0 || betResult === 'pending'}
+                    disabled={!betAmount || !betOdds || betResult === 'pending'}
                     className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     Agregar Paso
@@ -505,19 +538,19 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {currentChallenge.finalResult !== 'in_progress' && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
-                <p className="text-lg font-medium text-gray-900">
-                  Desafío {currentChallenge.finalResult === 'completed' ? 'Completado' : 'Fallido'}
-                </p>
-                <button
-                  onClick={startNewChallenge}
-                  className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Iniciar Nuevo Desafío
-                </button>
-              </div>
-            )}
+                         {currentChallenge && currentChallenge.finalResult !== 'in_progress' && (
+               <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
+                 <p className="text-lg font-medium text-gray-900">
+                   Desafío {currentChallenge.finalResult === 'completed' ? 'Completado' : 'Fallido'}
+                 </p>
+                 <button
+                   onClick={startNewChallenge}
+                   className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                 >
+                   Iniciar Nuevo Desafío
+                 </button>
+               </div>
+             )}
           </div>
         )}
       </div>
