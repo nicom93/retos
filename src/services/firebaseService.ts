@@ -49,6 +49,20 @@ export const createChallenge = async (date: string): Promise<string> => {
   }
 };
 
+// Finish a challenge manually
+export const finishChallenge = async (challengeId: string): Promise<void> => {
+  try {
+    const challengeRef = doc(db, CHALLENGES_COLLECTION, challengeId);
+    await updateDoc(challengeRef, {
+      finalResult: 'completed',
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error finishing challenge:', error);
+    throw error;
+  }
+};
+
 // Add a step to a challenge
 export const addStepToChallenge = async (
   challengeId: string, 
@@ -94,12 +108,9 @@ export const addStepToChallenge = async (
          // Determine final result
      let finalResult: Challenge['finalResult'] = 'in_progress';
      
-     if (step.bet.result === 'loss' || step.totalAfter <= 0) {
-       // El desafío termina si pierde o se queda sin dinero
+     if (step.bet.result === 'loss') {
+       // El desafío termina si pierde
        finalResult = 'failed';
-     } else if (step.bet.result === 'win' && step.stepNumber >= 3) {
-       // El desafío se completa si llega al paso 3 o más
-       finalResult = 'completed';
      }
 
     await updateDoc(challengeRef, {
@@ -199,24 +210,25 @@ export const getDailyStats = async (date: string): Promise<DailyStats> => {
     
     const totalProfit = challenges.reduce((sum, challenge) => sum + challenge.totalProfit, 0);
     const totalChallenges = challenges.length;
-    const successfulChallenges = challenges.filter(c => c.finalResult === 'completed').length;
+    const completedChallenges = challenges.filter(c => c.finalResult === 'completed').length;
+    const failedChallenges = challenges.filter(c => c.finalResult === 'failed').length;
     
     return {
       date,
-      challenges,
       totalProfit,
       totalChallenges,
-      successfulChallenges
+      completedChallenges,
+      failedChallenges
     };
   } catch (error) {
     console.error('Error getting daily stats:', error);
     // Return empty stats instead of throwing
     return {
       date,
-      challenges: [],
       totalProfit: 0,
       totalChallenges: 0,
-      successfulChallenges: 0
+      completedChallenges: 0,
+      failedChallenges: 0
     };
   }
 };

@@ -11,29 +11,27 @@ export interface Step {
   id: string;
   stepNumber: number;
   bet: Bet;
-  moneyBefore: number;
-  moneyAfter: number;
+  totalBefore: number;
+  totalAfter: number;
   timestamp: Date;
 }
 
 export interface Challenge {
   id: string;
-  startDate: Date;
-  initialMoney: number;
-  maxMoneyReached: number;
+  date: string;
   steps: Step[];
-  finalMoney: number;
-  status: 'in_progress' | 'completed' | 'failed';
+  totalProfit: number;
+  finalResult: 'in_progress' | 'completed' | 'failed';
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface DailyStats {
   date: string;
-  challenges: Challenge[];
-  totalProfit: number;
   totalChallenges: number;
-  successfulChallenges: number;
+  completedChallenges: number;
+  failedChallenges: number;
+  totalProfit: number;
 }
 
 export interface BetFormData {
