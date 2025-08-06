@@ -11,7 +11,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Challenge, Step, Bet, DailyStats } from '../types';
+import { Challenge, Step, DailyStats } from '../types';
 
 // Collection names
 const CHALLENGES_COLLECTION = 'challenges';

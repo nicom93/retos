@@ -83,7 +83,6 @@ const History: React.FC = () => {
   const completedChallenges = challenges.filter(c => c.finalResult === 'completed').length;
   const failedChallenges = challenges.filter(c => c.finalResult === 'failed').length;
   const totalProfit = challenges.reduce((sum, c) => sum + c.totalProfit, 0);
-  const averageProfit = totalChallenges > 0 ? totalProfit / totalChallenges : 0;
 
   // Get unique dates for filter
   const uniqueDates = Array.from(new Set(challenges.map(c => c.date))).sort().reverse();

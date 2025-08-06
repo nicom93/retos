@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createChallenge, addStepToChallenge, getChallengesByDate } from '../services/firebaseService';
-import { Challenge, Step, Bet } from '../types';
+import { Challenge, Step } from '../types';
 
 const ChallengeTracker: React.FC = () => {
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
@@ -16,11 +16,7 @@ const ChallengeTracker: React.FC = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  useEffect(() => {
-    loadTodayChallenges();
-  }, []);
-
-  const loadTodayChallenges = async () => {
+  const loadTodayChallenges = useCallback(async () => {
     try {
       setLoading(true);
       const todayChallenges = await getChallengesByDate(today);
@@ -44,7 +40,11 @@ const ChallengeTracker: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [today]);
+
+  useEffect(() => {
+    loadTodayChallenges();
+  }, [loadTodayChallenges]);
 
   const startNewChallenge = async () => {
     try {
