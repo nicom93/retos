@@ -1,46 +1,193 @@
-# Getting Started with Create React App
+# Betting Tracker - Seguimiento de Desafíos de Apuestas
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Una aplicación web para registrar y hacer seguimiento de desafíos de apuestas paso a paso, con cálculo automático de ganancias y estadísticas detalladas.
 
-## Available Scripts
+## Características
 
-In the project directory, you can run:
+- 📊 **Dashboard en tiempo real** con estadísticas del día
+- 🎯 **Tracker de desafíos** para registrar apuestas paso a paso
+- 📈 **Cálculo automático** de ganancias basado en cuotas
+- 📅 **Historial completo** con filtros por fecha
+- 💰 **Seguimiento de totales** en cada paso del desafío
+- 🔥 **Base de datos Firebase** para persistencia de datos
+- 📱 **Interfaz responsive** optimizada para móviles
 
-### `npm start`
+## Tecnologías Utilizadas
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS
+- **Base de Datos**: Firebase Firestore
+- **Hosting**: Netlify
+- **Routing**: React Router DOM
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Configuración Inicial
 
-### `npm test`
+### 1. Clonar el repositorio
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+git clone <tu-repositorio>
+cd betting-tracker
+```
 
-### `npm run build`
+### 2. Instalar dependencias
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 3. Configurar Firebase
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Ve a [Firebase Console](https://console.firebase.google.com/)
+2. Crea un nuevo proyecto
+3. Habilita Firestore Database
+4. Ve a Configuración del proyecto > Configuración de SDK
+5. Copia la configuración de la web app
 
-### `npm run eject`
+### 4. Actualizar configuración de Firebase
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+Edita el archivo `src/firebase/config.ts` y reemplaza los valores con tu configuración:
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```typescript
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROJECT_ID.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_PROJECT_ID.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
+};
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### 5. Configurar reglas de Firestore
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+En Firebase Console > Firestore Database > Reglas, usa estas reglas:
 
-## Learn More
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /challenges/{document} {
+      allow read, write: if true;
+    }
+  }
+}
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Desarrollo Local
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm start
+```
+
+La aplicación estará disponible en `http://localhost:3000`
+
+## Construcción para Producción
+
+```bash
+npm run build
+```
+
+## Despliegue en Netlify
+
+### Opción 1: Despliegue Automático (Recomendado)
+
+1. Conecta tu repositorio de GitHub a Netlify
+2. Configura las variables de entorno en Netlify:
+   - `REACT_APP_FIREBASE_API_KEY`
+   - `REACT_APP_FIREBASE_AUTH_DOMAIN`
+   - `REACT_APP_FIREBASE_PROJECT_ID`
+   - `REACT_APP_FIREBASE_STORAGE_BUCKET`
+   - `REACT_APP_FIREBASE_MESSAGING_SENDER_ID`
+   - `REACT_APP_FIREBASE_APP_ID`
+
+### Opción 2: Despliegue Manual
+
+1. Construye la aplicación:
+   ```bash
+   npm run build
+   ```
+
+2. Sube la carpeta `build` a Netlify
+
+## Estructura del Proyecto
+
+```
+src/
+├── components/          # Componentes React
+│   ├── Dashboard.tsx   # Dashboard principal
+│   ├── ChallengeTracker.tsx # Tracker de desafíos
+│   ├── History.tsx     # Historial de desafíos
+│   └── Navbar.tsx      # Navegación
+├── services/           # Servicios de Firebase
+│   └── firebaseService.ts
+├── types/              # Tipos TypeScript
+│   └── index.ts
+├── firebase/           # Configuración de Firebase
+│   └── config.ts
+└── App.tsx            # Componente principal
+```
+
+## Uso de la Aplicación
+
+### 1. Dashboard
+- Vista general de las estadísticas del día
+- Resumen de desafíos recientes
+- Acceso rápido a crear nuevos desafíos
+
+### 2. Tracker
+- Crear nuevos desafíos
+- Registrar apuestas paso a paso
+- Ver el progreso en tiempo real
+- Cálculo automático de ganancias
+
+### 3. Historial
+- Ver todos los desafíos pasados
+- Filtrar por fecha
+- Estadísticas detalladas de cada desafío
+
+## Funcionalidades Principales
+
+### Registro de Desafíos
+- Cada desafío se registra con fecha automática
+- Seguimiento de múltiples pasos por desafío
+- Estado automático (en progreso, completado, fallido)
+
+### Cálculo de Ganancias
+- Cálculo automático basado en monto y cuota
+- Seguimiento del total acumulado
+- Visualización de ganancias potenciales
+
+### Estadísticas
+- Total de desafíos por día
+- Tasa de éxito
+- Beneficio total
+- Historial detallado
+
+## Variables de Entorno
+
+Crea un archivo `.env.local` en la raíz del proyecto:
+
+```env
+REACT_APP_FIREBASE_API_KEY=tu_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=tu_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=tu_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=tu_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=tu_sender_id
+REACT_APP_FIREBASE_APP_ID=tu_app_id
+```
+
+## Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## Soporte
+
+Si tienes alguna pregunta o problema, por favor abre un issue en el repositorio.
