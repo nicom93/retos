@@ -28,18 +28,21 @@ const Dashboard: React.FC = () => {
       setChallenges(todayChallenges);
       setDailyStats(stats);
       
-      // Set current challenge to the most recent one that's in progress
-      const inProgressChallenge = todayChallenges.find(c => c.finalResult === 'in_progress');
-      if (inProgressChallenge) {
-        setCurrentChallenge(inProgressChallenge);
-        // Calculate current total based on the last step
-        if (inProgressChallenge.steps.length > 0) {
-          const lastStep = inProgressChallenge.steps[inProgressChallenge.steps.length - 1];
-          setCurrentTotal(lastStep.totalAfter);
-        } else {
-          setCurrentTotal(0);
-        }
-      }
+             // Set current challenge to the most recent one that's in progress
+       const inProgressChallenge = todayChallenges.find(c => c.finalResult === 'in_progress');
+       if (inProgressChallenge) {
+         setCurrentChallenge(inProgressChallenge);
+         // Calculate current total based on the last step
+         if (inProgressChallenge.steps.length > 0) {
+           const lastStep = inProgressChallenge.steps[inProgressChallenge.steps.length - 1];
+           setCurrentTotal(lastStep.totalAfter);
+         } else {
+           setCurrentTotal(0);
+         }
+       } else {
+         setCurrentChallenge(null);
+         setCurrentTotal(0);
+       }
     } catch (err) {
       setError('Error al cargar los datos');
       console.error(err);
@@ -103,7 +106,17 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       const stepNumber = currentChallenge.steps.length + 1;
-      const totalBefore = currentTotal;
+      
+      // Calculate total before this step
+      let totalBefore: number;
+      if (stepNumber === 1) {
+        // Primer paso: empezamos con 0
+        totalBefore = 0;
+      } else {
+        // Pasos siguientes: usamos el total del paso anterior
+        const lastStep = currentChallenge.steps[currentChallenge.steps.length - 1];
+        totalBefore = lastStep.totalAfter;
+      }
       
       // Calculate profit and new total
       let profit: number;
@@ -223,11 +236,18 @@ const Dashboard: React.FC = () => {
 
   const getMaxMoneyGenerated = (challenge: Challenge) => {
     if (challenge.steps.length === 0) return 0;
-    return Math.max(...challenge.steps.map(step => step.totalAfter));
+    
+    // Encontrar el paso con el total más alto (el récord)
+    const maxStep = challenge.steps.reduce((max, step) => 
+      step.totalAfter > max.totalAfter ? step : max
+    );
+    
+    return maxStep.totalAfter;
   };
 
   const getInitialMoney = (challenge: Challenge) => {
     if (challenge.steps.length === 0) return 0;
+    // El dinero inicial es el monto del primer paso (la inversión inicial)
     return challenge.steps[0].bet.amount;
   };
 
@@ -350,12 +370,15 @@ const Dashboard: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Total después:</p>
-                        <p className={`font-bold ${step.totalAfter >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-                          {formatCurrency(step.totalAfter)}
-                        </p>
-                      </div>
+                                             <div className="text-right">
+                         <p className="text-sm text-gray-600">Total después:</p>
+                         <p className={`font-bold ${step.totalAfter >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
+                           {formatCurrency(step.totalAfter)}
+                         </p>
+                         {step.totalAfter < 0 && (
+                           <p className="text-xs text-red-600">Sin dinero</p>
+                         )}
+                       </div>
                     </div>
                   ))}
                 </div>
@@ -399,16 +422,19 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {betAmount && betOdds && parseFloat(betAmount) > 0 && parseFloat(betOdds) > 0 && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
-                    </p>
-                    <p className="text-sm text-blue-800">
-                      Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + calculatePotentialWin())}</span>
-                    </p>
-                  </div>
-                )}
+                                 {betAmount && betOdds && parseFloat(betAmount) > 0 && parseFloat(betOdds) > 0 && (
+                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                     <p className="text-sm text-blue-800">
+                       Ganancia potencial: <span className="font-bold">{formatCurrency(calculatePotentialWin())}</span>
+                     </p>
+                     <p className="text-sm text-blue-800">
+                       Total después de ganar: <span className="font-bold">{formatCurrency(currentTotal + calculatePotentialWin())}</span>
+                     </p>
+                     <p className="text-sm text-blue-800">
+                       Total después de perder: <span className="font-bold">{formatCurrency(currentTotal - parseFloat(betAmount))}</span>
+                     </p>
+                   </div>
+                 )}
 
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
